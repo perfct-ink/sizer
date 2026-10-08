@@ -126,9 +126,6 @@ private func animateSnap(_ axWindow: AXUIElement,
                           startSize: CGSize, endSize: CGSize,
                           snap: WindowSnap, visibleFrame v: CGRect, primaryH: CGFloat,
                           currentPos: CGPoint) {
-    pendingAnimations.forEach { $0.cancel() }
-    pendingAnimations.removeAll()
-
     let duration = BindingStore.shared.animationSpeed.duration
     let targetPos = axOrigin(snap: snap, size: endSize, visibleFrame: v, primaryH: primaryH)
     let repositionFirst = shouldRepositionBeforeResizing(
@@ -194,6 +191,12 @@ func snapFrontWindow(to snap: WindowSnap) {
     let axApp = AXUIElementCreateApplication(frontApp.processIdentifier)
     guard let axWindow = frontWindow(for: axApp) else { return }
 
+    pendingAnimations.forEach { $0.cancel() }
+    pendingAnimations.removeAll()
+    snapWindow(axWindow, to: snap)
+}
+
+private func snapWindow(_ axWindow: AXUIElement, to snap: WindowSnap) {
     // Determine the screen from the window's current position.
     var axPosRef: CFTypeRef?
     AXUIElementCopyAttributeValue(axWindow, kAXPositionAttribute as CFString, &axPosRef)
@@ -309,7 +312,7 @@ func moveToAdjacentDisplay(goRight: Bool) {
 
 // MARK: - Auto-arrange all app windows
 
-private func frontAppWindows() -> (windows: [AXUIElement], v: CGRect, ph: CGFloat)? {
+private func frontAppWindows(includeMinimized: Bool = false) -> (windows: [AXUIElement], v: CGRect, ph: CGFloat)? {
     guard let frontApp = NSWorkspace.shared.frontmostApplication else { return nil }
     let axApp = AXUIElementCreateApplication(frontApp.processIdentifier)
 
@@ -323,7 +326,7 @@ private func frontAppWindows() -> (windows: [AXUIElement], v: CGRect, ph: CGFloa
               (subroleRef as? String) == "AXStandardWindow" else { return false }
         var minRef: CFTypeRef?
         if AXUIElementCopyAttributeValue(win, kAXMinimizedAttribute as CFString, &minRef) == .success,
-           (minRef as? Bool) == true { return false }
+           (minRef as? Bool) == true && !includeMinimized { return false }
         return true
     }
     guard !windows.isEmpty else { return nil }
@@ -398,6 +401,16 @@ private func animateArrange(_ windows: [AXUIElement], endSizes: [CGSize], endPos
         }
         pendingAnimations.append(item)
         DispatchQueue.main.asyncAfter(deadline: .now() + duration * t, execute: item)
+    }
+}
+
+func maximizeFrontAppWindows() {
+    guard let (windows, _, _) = frontAppWindows(includeMinimized: true) else { return }
+    // Cancel once so every window's snap animation can run together.
+    pendingAnimations.forEach { $0.cancel() }
+    pendingAnimations.removeAll()
+    for window in windows {
+        snapWindow(window, to: .maximize)
     }
 }
 
@@ -508,6 +521,13 @@ func hotkeyCallback(
         return noErr
     }
 
+    if hkID.id == 16 {
+        DispatchQueue.main.async { AppDelegate.shared?.pulseIcon() }
+        if AXIsProcessTrusted() { maximizeFrontAppWindows() }
+        else { AppDelegate.shared?.checkAccessibility() }
+        return noErr
+    }
+
     let snap: WindowSnap? = {
         switch hkID.id {
         case 1:  return .left
@@ -588,7 +608,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         toggleMenuItem = toggle
         menu.addItem(toggle)
 
-        for group in [[1,2,3,4], [5,6,7,8], [9,10,11], [12,13], [14,15]] {
+        for group in [[1,2,3,4], [5,6,7,8], [9,16,10,11], [12,13], [14,15]] {
             menu.addItem(.separator())
             for id in group {
                 guard let def = BindingStore.shared.definitions.first(where: { $0.id == UInt32(id) }) else { continue }
@@ -620,6 +640,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         guard let def = BindingStore.shared.definitions.first(where: { $0.id == UInt32(sender.tag) }) else { return }
         if let snap = def.snap {
             snapFrontWindow(to: snap)
+        } else if def.id == 16 {
+            maximizeFrontAppWindows()
         } else if def.id == 12 {
             arrangeFrontAppWindows()
         } else if def.id == 13 {

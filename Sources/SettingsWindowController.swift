@@ -4,6 +4,7 @@ import Carbon.HIToolbox
 // MARK: - Shortcut formatting
 
 let keyNames: [UInt32: String] = [
+    50: "`",
     // Arrows
     123: "←", 124: "→", 125: "↓", 126: "↑",
     // Letters

@@ -35,6 +35,7 @@ final class BindingStore {
         HotkeyDef(id:  7, label: "Bottom-Right Quarter", snap: .bottomRight,  defaultKeyCode: 124, defaultModifiers: UInt32(controlKey | optionKey | shiftKey)),
         HotkeyDef(id:  8, label: "Bottom-Left Quarter",  snap: .bottomLeft,   defaultKeyCode: 125, defaultModifiers: UInt32(controlKey | optionKey | shiftKey)),
         HotkeyDef(id:  9, label: "Maximize",             snap: .maximize,     defaultKeyCode:  46, defaultModifiers: UInt32(controlKey | optionKey | cmdKey)),
+        HotkeyDef(id: 16, label: "Maximize All Windows", snap: nil,       defaultKeyCode: 50, defaultModifiers: UInt32(controlKey | optionKey | cmdKey)),
         HotkeyDef(id: 10, label: "Center (75%)",         snap: .center,       defaultKeyCode:   8, defaultModifiers: UInt32(controlKey | optionKey | cmdKey)),
         HotkeyDef(id: 11, label: "Center (50%)",         snap: .center50,     defaultKeyCode:   7, defaultModifiers: UInt32(controlKey | optionKey | cmdKey)),
         HotkeyDef(id: 12, label: "Auto Arrange Columns", snap: nil,           defaultKeyCode:   9, defaultModifiers: UInt32(controlKey | optionKey | cmdKey)),
