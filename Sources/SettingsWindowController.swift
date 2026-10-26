@@ -83,12 +83,12 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     convenience init() {
         let win = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 420, height: 667),
+            contentRect: NSRect(x: 0, y: 0, width: 420, height: 690),
             styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: false
         )
-        win.title = "Sizer — Keyboard Shortcuts"
+        win.title = "Sizer Settings"
         win.center()
         win.isReleasedWhenClosed = false
         self.init(window: win)
@@ -126,131 +126,23 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         cv.addSubview(sw)
         enabledSwitch = sw
 
-        let divider1 = NSBox()
-        divider1.translatesAutoresizingMaskIntoConstraints = false
-        divider1.boxType = .separator
-        cv.addSubview(divider1)
+        // Tabs
 
-        // Accessibility status banner
+        let tabs = NSTabView()
+        tabs.translatesAutoresizingMaskIntoConstraints = false
+        cv.addSubview(tabs)
 
-        let axLabel = NSTextField(labelWithString: "")
-        axLabel.translatesAutoresizingMaskIntoConstraints = false
-        axLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
-        axLabel.maximumNumberOfLines = 0
-        axLabel.lineBreakMode = .byWordWrapping
-        cv.addSubview(axLabel)
-        axStatusLabel = axLabel
+        let generalItem = NSTabViewItem(identifier: "general")
+        generalItem.label = "General"
+        generalItem.view = buildGeneralTab()
+        tabs.addTabViewItem(generalItem)
 
-        let axBtn = NSButton(title: "Open Settings", target: self,
-                             action: #selector(openAccessibilitySettings))
-        axBtn.translatesAutoresizingMaskIntoConstraints = false
-        axBtn.bezelStyle = .rounded
-        axBtn.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
-        cv.addSubview(axBtn)
-        axOpenBtn = axBtn
+        let shortcutsItem = NSTabViewItem(identifier: "shortcuts")
+        shortcutsItem.label = "Shortcuts"
+        shortcutsItem.view = buildShortcutsTab()
+        tabs.addTabViewItem(shortcutsItem)
 
-        let divider2 = NSBox()
-        divider2.translatesAutoresizingMaskIntoConstraints = false
-        divider2.boxType = .separator
-        cv.addSubview(divider2)
-
-        // Shortcut table
-
-        let scroll = NSScrollView()
-        scroll.translatesAutoresizingMaskIntoConstraints = false
-        scroll.hasVerticalScroller = false
-        scroll.borderType = .bezelBorder
-        cv.addSubview(scroll)
-
-        tableView = NSTableView()
-        tableView.dataSource = self
-        tableView.delegate   = self
-        tableView.allowsColumnResizing    = false
-        tableView.allowsMultipleSelection = false
-        tableView.rowHeight   = 26
-        tableView.focusRingType = .none
-        tableView.usesAlternatingRowBackgroundColors = true
-        tableView.columnAutoresizingStyle = .uniformColumnAutoresizingStyle
-        tableView.intercellSpacing = .zero
-        tableView.headerView = NonClickableHeaderView()
-
-        let c1 = NSTableColumn(identifier: .init("action"))
-        c1.title = "Action"; c1.width = 200
-        let c2 = NSTableColumn(identifier: .init("shortcut"))
-        c2.title = "Shortcut"; c2.width = 180
-        tableView.addTableColumn(c1)
-        tableView.addTableColumn(c2)
-
-        scroll.documentView = tableView
-        tableView.reloadData()
-
-        let helpLabel = NSTextField(labelWithString: "Click a shortcut to record a new one. Press ⎋ to cancel.")
-        helpLabel.translatesAutoresizingMaskIntoConstraints = false
-        helpLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
-        helpLabel.textColor = .secondaryLabelColor
-        cv.addSubview(helpLabel)
-
-        let speedLabel = NSTextField(labelWithString: "Animation:")
-        speedLabel.translatesAutoresizingMaskIntoConstraints = false
-        speedLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
-        speedLabel.textColor = .secondaryLabelColor
-        cv.addSubview(speedLabel)
-
-        let speedOptions: [AnimationSpeed] = [.off, .faster, .fast, .slow]
-        let speedControl = NSSegmentedControl(labels: ["Off", "Faster", "Fast", "Slow"],
-                                              trackingMode: .selectOne,
-                                              target: self,
-                                              action: #selector(speedChanged(_:)))
-        speedControl.translatesAutoresizingMaskIntoConstraints = false
-        speedControl.selectedSegment = speedOptions.firstIndex(of: BindingStore.shared.animationSpeed) ?? 2
-        cv.addSubview(speedControl)
-
-        let resetBtn = NSButton(title: "Reset Defaults", target: self, action: #selector(resetDefaults))
-        resetBtn.translatesAutoresizingMaskIntoConstraints = false
-        resetBtn.bezelStyle = .rounded
-        cv.addSubview(resetBtn)
-
-        let finderLabel = NSTextField(labelWithString: "Finder sidebar:")
-        finderLabel.translatesAutoresizingMaskIntoConstraints = false
-        finderLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
-        finderLabel.textColor = .secondaryLabelColor
-        cv.addSubview(finderLabel)
-
-        let finderCheck = NSButton(checkboxWithTitle: "Hide if ≥", target: self, action: #selector(finderCheckboxChanged(_:)))
-        finderCheck.translatesAutoresizingMaskIntoConstraints = false
-        finderCheck.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
-        finderCheck.state = BindingStore.shared.finderSidebarHideEnabled ? .on : .off
-        cv.addSubview(finderCheck)
-        finderCheckbox = finderCheck
-
-        let finderField = NSTextField()
-        finderField.translatesAutoresizingMaskIntoConstraints = false
-        finderField.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
-        finderField.stringValue = "\(BindingStore.shared.finderSidebarHideThreshold)"
-        finderField.isEnabled = BindingStore.shared.finderSidebarHideEnabled
-        finderField.delegate = self
-        finderField.placeholderString = "5"
-        cv.addSubview(finderField)
-        finderTextField = finderField
-
-        let finderWindowsLabel = NSTextField(labelWithString: "windows")
-        finderWindowsLabel.translatesAutoresizingMaskIntoConstraints = false
-        finderWindowsLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
-        finderWindowsLabel.textColor = .secondaryLabelColor
-        cv.addSubview(finderWindowsLabel)
-
-        let launchCheck = NSButton(checkboxWithTitle: "Launch at Login",
-                                    target: self, action: #selector(launchAtLoginToggled(_:)))
-        launchCheck.translatesAutoresizingMaskIntoConstraints = false
-        launchCheck.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
-        AppDelegate.shared?.syncLaunchAtLoginState()
-        launchCheck.state = BindingStore.shared.launchAtLogin ? .on : .off
-        if #available(macOS 13.0, *) {} else {
-            launchCheck.isEnabled = false
-            launchCheck.toolTip = "Requires macOS 13 or later"
-        }
-        cv.addSubview(launchCheck)
-        launchAtLoginCheckbox = launchCheck
+        // Footer
 
         let doneBtn = NSButton(title: "Done", target: self, action: #selector(close))
         doneBtn.translatesAutoresizingMaskIntoConstraints = false
@@ -282,43 +174,201 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             enabledLabel.trailingAnchor.constraint(equalTo: sw.leadingAnchor, constant: -6),
             enabledLabel.centerYAnchor.constraint(equalTo: sw.centerYAnchor),
 
-            divider1.topAnchor.constraint(equalTo: iconView.bottomAnchor, constant: 12),
-            divider1.leadingAnchor.constraint(equalTo: cv.leadingAnchor),
-            divider1.trailingAnchor.constraint(equalTo: cv.trailingAnchor),
+            tabs.topAnchor.constraint(equalTo: iconView.bottomAnchor, constant: 12),
+            tabs.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: 12),
+            tabs.trailingAnchor.constraint(equalTo: cv.trailingAnchor, constant: -12),
+            tabs.bottomAnchor.constraint(equalTo: doneBtn.topAnchor, constant: -12),
 
-            axLabel.topAnchor.constraint(equalTo: divider1.bottomAnchor, constant: 8),
-            axLabel.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: 16),
-            axLabel.trailingAnchor.constraint(equalTo: cv.trailingAnchor, constant: -16),
+            doneBtn.trailingAnchor.constraint(equalTo: cv.trailingAnchor, constant: -16),
+            doneBtn.bottomAnchor.constraint(equalTo: cv.bottomAnchor, constant: -16),
 
-            axBtn.topAnchor.constraint(equalTo: axLabel.bottomAnchor, constant: 6),
-            axBtn.trailingAnchor.constraint(equalTo: cv.trailingAnchor, constant: -16),
+            versionLabel.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: 16),
+            versionLabel.centerYAnchor.constraint(equalTo: doneBtn.centerYAnchor),
+        ])
 
-            divider2.topAnchor.constraint(equalTo: axBtn.bottomAnchor, constant: 8),
-            divider2.leadingAnchor.constraint(equalTo: cv.leadingAnchor),
-            divider2.trailingAnchor.constraint(equalTo: cv.trailingAnchor),
+        refreshAccessibilityStatus()
+    }
 
-            scroll.topAnchor.constraint(equalTo: divider2.bottomAnchor, constant: 8),
-            scroll.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: 16),
-            scroll.trailingAnchor.constraint(equalTo: cv.trailingAnchor, constant: -16),
-            scroll.bottomAnchor.constraint(equalTo: helpLabel.topAnchor, constant: -12),
+    private func buildShortcutsTab() -> NSView {
+        let v = NSView()
 
-            helpLabel.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: 16),
-            helpLabel.bottomAnchor.constraint(equalTo: speedLabel.topAnchor, constant: -10),
+        let scroll = NSScrollView()
+        scroll.translatesAutoresizingMaskIntoConstraints = false
+        scroll.hasVerticalScroller = false
+        scroll.borderType = .bezelBorder
+        v.addSubview(scroll)
 
-            speedLabel.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: 16),
+        tableView = NSTableView()
+        tableView.dataSource = self
+        tableView.delegate   = self
+        tableView.allowsColumnResizing    = false
+        tableView.allowsMultipleSelection = false
+        tableView.rowHeight   = 26
+        tableView.focusRingType = .none
+        tableView.usesAlternatingRowBackgroundColors = true
+        tableView.columnAutoresizingStyle = .uniformColumnAutoresizingStyle
+        tableView.intercellSpacing = .zero
+        tableView.headerView = NonClickableHeaderView()
+
+        let c1 = NSTableColumn(identifier: .init("action"))
+        c1.title = "Action"; c1.width = 200
+        let c2 = NSTableColumn(identifier: .init("shortcut"))
+        c2.title = "Shortcut"; c2.width = 180
+        tableView.addTableColumn(c1)
+        tableView.addTableColumn(c2)
+
+        scroll.documentView = tableView
+        tableView.reloadData()
+
+        let helpLabel = NSTextField(labelWithString: "Click a shortcut to record a new one. Press ⎋ to cancel.")
+        helpLabel.translatesAutoresizingMaskIntoConstraints = false
+        helpLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        helpLabel.textColor = .secondaryLabelColor
+        v.addSubview(helpLabel)
+
+        let resetBtn = NSButton(title: "Reset Defaults", target: self, action: #selector(resetDefaults))
+        resetBtn.translatesAutoresizingMaskIntoConstraints = false
+        resetBtn.bezelStyle = .rounded
+        v.addSubview(resetBtn)
+
+        NSLayoutConstraint.activate([
+            scroll.topAnchor.constraint(equalTo: v.topAnchor, constant: 12),
+            scroll.leadingAnchor.constraint(equalTo: v.leadingAnchor, constant: 12),
+            scroll.trailingAnchor.constraint(equalTo: v.trailingAnchor, constant: -12),
+            scroll.bottomAnchor.constraint(equalTo: helpLabel.topAnchor, constant: -8),
+
+            helpLabel.leadingAnchor.constraint(equalTo: v.leadingAnchor, constant: 12),
+            helpLabel.bottomAnchor.constraint(equalTo: resetBtn.topAnchor, constant: -10),
+
+            resetBtn.leadingAnchor.constraint(equalTo: v.leadingAnchor, constant: 12),
+            resetBtn.bottomAnchor.constraint(equalTo: v.bottomAnchor, constant: -12),
+        ])
+
+        return v
+    }
+
+    private func buildGeneralTab() -> NSView {
+        let v = NSView()
+
+        // Accessibility status banner
+
+        let axLabel = NSTextField(labelWithString: "")
+        axLabel.translatesAutoresizingMaskIntoConstraints = false
+        axLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        axLabel.maximumNumberOfLines = 0
+        axLabel.lineBreakMode = .byWordWrapping
+        axStatusLabel = axLabel
+
+        let axBtn = NSButton(title: "Open Settings", target: self,
+                             action: #selector(openAccessibilitySettings))
+        axBtn.translatesAutoresizingMaskIntoConstraints = false
+        axBtn.bezelStyle = .rounded
+        axBtn.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        axOpenBtn = axBtn
+
+        // Stack so the button takes no space while hidden.
+        let axStack = NSStackView(views: [axLabel, axBtn])
+        axStack.translatesAutoresizingMaskIntoConstraints = false
+        axStack.orientation = .vertical
+        axStack.alignment = .trailing
+        axStack.spacing = 6
+        v.addSubview(axStack)
+
+        let divider = NSBox()
+        divider.translatesAutoresizingMaskIntoConstraints = false
+        divider.boxType = .separator
+        v.addSubview(divider)
+
+        // Preferences
+
+        let speedLabel = NSTextField(labelWithString: "Animation:")
+        speedLabel.translatesAutoresizingMaskIntoConstraints = false
+        speedLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        speedLabel.textColor = .secondaryLabelColor
+        v.addSubview(speedLabel)
+
+        let speedOptions: [AnimationSpeed] = [.off, .faster, .fast, .slow]
+        let speedControl = NSSegmentedControl(labels: ["Off", "Faster", "Fast", "Slow"],
+                                              trackingMode: .selectOne,
+                                              target: self,
+                                              action: #selector(speedChanged(_:)))
+        speedControl.translatesAutoresizingMaskIntoConstraints = false
+        speedControl.selectedSegment = speedOptions.firstIndex(of: BindingStore.shared.animationSpeed) ?? 2
+        v.addSubview(speedControl)
+
+        let speedNote = NSTextField(wrappingLabelWithString: "If a window is too slow to keep up, Sizer skips the rest of the animation and jumps straight to the final size.")
+        speedNote.translatesAutoresizingMaskIntoConstraints = false
+        speedNote.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        speedNote.textColor = .tertiaryLabelColor
+        v.addSubview(speedNote)
+
+        let finderLabel = NSTextField(labelWithString: "Finder sidebar:")
+        finderLabel.translatesAutoresizingMaskIntoConstraints = false
+        finderLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        finderLabel.textColor = .secondaryLabelColor
+        v.addSubview(finderLabel)
+
+        let finderCheck = NSButton(checkboxWithTitle: "Hide if ≥", target: self, action: #selector(finderCheckboxChanged(_:)))
+        finderCheck.translatesAutoresizingMaskIntoConstraints = false
+        finderCheck.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        finderCheck.state = BindingStore.shared.finderSidebarHideEnabled ? .on : .off
+        v.addSubview(finderCheck)
+        finderCheckbox = finderCheck
+
+        let finderField = NSTextField()
+        finderField.translatesAutoresizingMaskIntoConstraints = false
+        finderField.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        finderField.stringValue = "\(BindingStore.shared.finderSidebarHideThreshold)"
+        finderField.isEnabled = BindingStore.shared.finderSidebarHideEnabled
+        finderField.delegate = self
+        finderField.placeholderString = "5"
+        v.addSubview(finderField)
+        finderTextField = finderField
+
+        let finderWindowsLabel = NSTextField(labelWithString: "windows")
+        finderWindowsLabel.translatesAutoresizingMaskIntoConstraints = false
+        finderWindowsLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        finderWindowsLabel.textColor = .secondaryLabelColor
+        v.addSubview(finderWindowsLabel)
+
+        let launchCheck = NSButton(checkboxWithTitle: "Launch at Login",
+                                    target: self, action: #selector(launchAtLoginToggled(_:)))
+        launchCheck.translatesAutoresizingMaskIntoConstraints = false
+        launchCheck.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        AppDelegate.shared?.syncLaunchAtLoginState()
+        launchCheck.state = BindingStore.shared.launchAtLogin ? .on : .off
+        if #available(macOS 13.0, *) {} else {
+            launchCheck.isEnabled = false
+            launchCheck.toolTip = "Requires macOS 13 or later"
+        }
+        v.addSubview(launchCheck)
+        launchAtLoginCheckbox = launchCheck
+
+        NSLayoutConstraint.activate([
+            axStack.topAnchor.constraint(equalTo: v.topAnchor, constant: 14),
+            axStack.leadingAnchor.constraint(equalTo: v.leadingAnchor, constant: 16),
+            axStack.trailingAnchor.constraint(equalTo: v.trailingAnchor, constant: -16),
+            axLabel.widthAnchor.constraint(equalTo: axStack.widthAnchor),
+
+            divider.topAnchor.constraint(equalTo: axStack.bottomAnchor, constant: 12),
+            divider.leadingAnchor.constraint(equalTo: v.leadingAnchor, constant: 16),
+            divider.trailingAnchor.constraint(equalTo: v.trailingAnchor, constant: -16),
+
+            speedLabel.leadingAnchor.constraint(equalTo: v.leadingAnchor, constant: 16),
             speedLabel.centerYAnchor.constraint(equalTo: speedControl.centerYAnchor),
 
+            speedControl.topAnchor.constraint(equalTo: divider.bottomAnchor, constant: 14),
             speedControl.leadingAnchor.constraint(equalTo: speedLabel.trailingAnchor, constant: 8),
-            speedControl.bottomAnchor.constraint(equalTo: finderCheck.topAnchor, constant: -8),
 
-            finderLabel.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: 16),
+            finderLabel.leadingAnchor.constraint(equalTo: v.leadingAnchor, constant: 16),
             finderLabel.centerYAnchor.constraint(equalTo: finderCheck.centerYAnchor),
 
-            finderCheck.leadingAnchor.constraint(equalTo: finderLabel.trailingAnchor, constant: 8),
-            finderCheck.bottomAnchor.constraint(equalTo: launchCheck.topAnchor, constant: -8),
+            speedNote.topAnchor.constraint(equalTo: speedControl.bottomAnchor, constant: 6),
+            speedNote.leadingAnchor.constraint(equalTo: speedControl.leadingAnchor),
+            speedNote.trailingAnchor.constraint(equalTo: v.trailingAnchor, constant: -16),
 
-            launchCheck.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: 16),
-            launchCheck.bottomAnchor.constraint(equalTo: resetBtn.topAnchor, constant: -10),
+            finderCheck.topAnchor.constraint(equalTo: speedNote.bottomAnchor, constant: 14),
+            finderCheck.leadingAnchor.constraint(equalTo: finderLabel.trailingAnchor, constant: 8),
 
             finderField.leadingAnchor.constraint(equalTo: finderCheck.trailingAnchor, constant: 6),
             finderField.centerYAnchor.constraint(equalTo: finderCheck.centerYAnchor),
@@ -327,17 +377,11 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             finderWindowsLabel.leadingAnchor.constraint(equalTo: finderField.trailingAnchor, constant: 4),
             finderWindowsLabel.centerYAnchor.constraint(equalTo: finderCheck.centerYAnchor),
 
-            resetBtn.leadingAnchor.constraint(equalTo: cv.leadingAnchor, constant: 16),
-            resetBtn.bottomAnchor.constraint(equalTo: cv.bottomAnchor, constant: -16),
-
-            doneBtn.trailingAnchor.constraint(equalTo: cv.trailingAnchor, constant: -16),
-            doneBtn.bottomAnchor.constraint(equalTo: cv.bottomAnchor, constant: -16),
-
-            versionLabel.centerXAnchor.constraint(equalTo: cv.centerXAnchor),
-            versionLabel.centerYAnchor.constraint(equalTo: doneBtn.centerYAnchor),
+            launchCheck.topAnchor.constraint(equalTo: finderCheck.bottomAnchor, constant: 14),
+            launchCheck.leadingAnchor.constraint(equalTo: v.leadingAnchor, constant: 16),
         ])
 
-        refreshAccessibilityStatus()
+        return v
     }
 
     private func refreshAccessibilityStatus() {
