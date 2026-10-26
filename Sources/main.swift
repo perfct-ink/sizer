@@ -78,10 +78,6 @@ private func frontWindow(for axApp: AXUIElement) -> AXUIElement? {
 
 private var pendingAnimations: [DispatchWorkItem] = []
 
-private func easeInOut(_ t: Double) -> Double {
-    t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t
-}
-
 /// AX resizes are anchored at the window's top-left corner. When the left or top
 /// edge is doing most of the moving, reposition first and then resize toward the
 /// stationary opposite edge. Right/bottom-edge resizes use the inverse order.
@@ -150,20 +146,12 @@ private func animateSnap(_ axWindow: AXUIElement,
         return
     }
 
-    let steps = 12
-
-    for i in 1...steps {
-        let t  = easeInOut(Double(i) / Double(steps))
+    pendingAnimations += scheduleAnimation(duration: duration, steps: 12, easedDeadlines: true) { t in
         let sz = CGSize(width:  startSize.width  + (endSize.width  - startSize.width)  * t,
                         height: startSize.height + (endSize.height - startSize.height) * t)
         let pos = CGPoint(x: currentPos.x + (targetPos.x - currentPos.x) * t,
                           y: currentPos.y + (targetPos.y - currentPos.y) * t)
-
-        let item = DispatchWorkItem {
-            setFrame(axWindow, position: pos, size: sz, resizeFirst: resizeFirst)
-        }
-        pendingAnimations.append(item)
-        DispatchQueue.main.asyncAfter(deadline: .now() + duration * t, execute: item)
+        setFrame(axWindow, position: pos, size: sz, resizeFirst: resizeFirst)
     }
 
     // After the animation settles, re-read the actual size. If the window clamped to a
@@ -379,28 +367,16 @@ private func animateArrange(_ windows: [AXUIElement], endSizes: [CGSize], endPos
         return pos
     }
 
-    let steps = 8
-    for step in 1...steps {
-        let t        = Double(step) / Double(steps)   // uniform deadline spacing
-        let progress = easeInOut(t)                    // eased interpolation value
-        let item = DispatchWorkItem {
-            for (i, win) in windows.enumerated() {
-                let sp = startPositions[i], ep = endPositions[i]
-                let ss = startSizes[i],     es = endSizes[i]
-                var pos = CGPoint(x: sp.x + (ep.x - sp.x) * progress,
-                                  y: sp.y + (ep.y - sp.y) * progress)
-                var sz  = CGSize(width:  ss.width  + (es.width  - ss.width)  * progress,
-                                 height: ss.height + (es.height - ss.height) * progress)
-                if let pv = AXValueCreate(.cgPoint, &pos) {
-                    AXUIElementSetAttributeValue(win, kAXPositionAttribute as CFString, pv)
-                }
-                if let sv = AXValueCreate(.cgSize, &sz) {
-                    AXUIElementSetAttributeValue(win, kAXSizeAttribute as CFString, sv)
-                }
-            }
+    pendingAnimations += scheduleAnimation(duration: duration, steps: 8) { progress in
+        for (i, win) in windows.enumerated() {
+            let sp = startPositions[i], ep = endPositions[i]
+            let ss = startSizes[i],     es = endSizes[i]
+            let pos = CGPoint(x: sp.x + (ep.x - sp.x) * progress,
+                              y: sp.y + (ep.y - sp.y) * progress)
+            let sz = CGSize(width:  ss.width  + (es.width  - ss.width)  * progress,
+                            height: ss.height + (es.height - ss.height) * progress)
+            setFrame(win, position: pos, size: sz, resizeFirst: false)
         }
-        pendingAnimations.append(item)
-        DispatchQueue.main.asyncAfter(deadline: .now() + duration * t, execute: item)
     }
 }
 

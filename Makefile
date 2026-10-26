@@ -87,6 +87,10 @@ clean:
 test:
 	@echo "→ Type-checking…"
 	@swiftc -typecheck $(SRC)
+	@set -e; test_bin=$$(mktemp /tmp/sizer-animation-tests.XXXXXX); \
+	trap 'rm -f "$$test_bin"' EXIT; \
+	swiftc Sources/Animation.swift Tests/AnimationTests.swift -o "$$test_bin"; \
+	"$$test_bin"
 	@echo "✓ Tests passed"
 
 # Bump the patch version, commit (along with any pending changes), tag, and push.
