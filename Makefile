@@ -91,6 +91,10 @@ test:
 	trap 'rm -f "$$test_bin"' EXIT; \
 	swiftc Sources/Animation.swift Tests/AnimationTests.swift -o "$$test_bin"; \
 	"$$test_bin"
+	@set -e; test_bin=$$(mktemp /tmp/sizer-snap-tests.XXXXXX); \
+	trap 'rm -f "$$test_bin"' EXIT; \
+	swiftc Sources/SnapGeometry.swift Tests/SnapTests.swift -o "$$test_bin"; \
+	"$$test_bin"
 	@echo "✓ Tests passed"
 
 # Bump the patch version, commit (along with any pending changes), tag, and push.
